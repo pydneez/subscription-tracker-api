@@ -21,30 +21,38 @@ def get_or_create_category(category_name):
 
 # --- Routes ---
 
-# GET ALL (with optional ?category= filter)
+# GET ALL (with optional ?category= and ?status= filters)
 @bp.route('', methods=['GET'])
 def get_subscriptions():
+    query = Subscription.query
+
+    # get param
     category_name = request.args.get('category')
-    
+    status_name = request.args.get('status')
+
+    # filter for category
     if category_name:
-        subs = Subscription.query.join(Category).filter(
+        query = query.join(Category).filter(
             func.lower(Category.name) == category_name.lower()
-        ).all()
-        # Optional: return empty list if not found, consistent with your previous logic
-        if not subs:
-             return jsonify({
-                'message': f'No subscriptions found in category: {category_name}', 
-                'subscriptions': []
-            }), 200
-    else:
-        subs = Subscription.query.all()
-        
+        )
+
+    # filter for status (chain filter from above)
+    if status_name:
+        query = query.filter(
+            func.lower(Subscription.status) == status_name.lower()
+        )
+
+    subs = query.all()
+    if not subs:
+        return
+
+    # return result
     return jsonify([sub.to_json() for sub in subs]), 200
 
 # GET ONE
 @bp.route('/<int:id>', methods=['GET'])
 def get_subscription(id):
-    # Use db.session.get to avoid Legacy warning
+
     sub = db.session.get(Subscription, id)
     if not sub:
         abort(404, description=f"Subscription with ID {id} not found")
@@ -77,12 +85,12 @@ def create_subscription():
 
         # 4. Status (Optional)
         status_enum = StatusType.ACTIVE
-        if 'status' in data:
-            try:
-                status_enum = StatusType(data['status'])
-            except ValueError:
-                allowed = [e.value for e in StatusType]
-                abort(400, description=f'Invalid status. Allowed: {allowed}')
+        # if 'status' in data:
+        #     try:
+        #         status_enum = StatusType(data['status'])
+        #     except ValueError:
+        #         allowed = [e.value for e in StatusType]
+        #         abort(400, description=f'Invalid status. Allowed: {allowed}')
 
         # 5. Handle Category
         cat_obj = get_or_create_category(data['category'])
@@ -156,7 +164,15 @@ def delete_subscription(id):
     sub = db.session.get(Subscription, id)
     if not sub:
         abort(404, description=f"Cannot delete: Subscription {id} does not exist")
-        
+    
+    # 1. Save the data in memory BEFORE deleting
+    deleted_data = sub.to_json()
+    # 2. Delete from DB
     db.session.delete(sub)
     db.session.commit()
-    return jsonify({'message': 'Deleted successfully'}), 200
+
+    # 3. Return the saved data
+    return jsonify({
+        'message': 'Deleted successfully', 
+        'subscription': deleted_data
+    }), 200
