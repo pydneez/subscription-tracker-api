@@ -146,7 +146,7 @@ python run.py
 
 | Method | Endpoint | Description |
 | --- | --- | --- |
-| **GET** | `/analytics` | List total prices that are Active. |
+| **GET** | `/analytics` | Returns a full financial dashboard, including total monthly cost, yearly projection, and top spending category. |
 
 
 ---
@@ -155,8 +155,7 @@ python run.py
 
 | Method | Endpoint | Description |
 | --- | --- | --- |
-| **GET** | `/budget` | Show current budget. |
-| **GET** | `/budget/status` | Show the status. |
+| **GET** | `/budget` | Show current budget limit and health status (Over/Under budget). |
 | **PUT** | `/budget` | Limit the budget. |
 
 **📝 PUT Request Example (Set Limit):**
