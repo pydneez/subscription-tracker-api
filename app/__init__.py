@@ -14,10 +14,14 @@ def create_app():
 
     # Register Blueprints
     from app.routes.subscription import bp as sub_bp 
-    from app.routes.category import bp as cat_bp      
-    
+    from app.routes.category import bp as cat_bp 
+    from app.routes.analytics import bp as analytics_bp
+    from app.routes.budgets import bp as budget_bp
+
     app.register_blueprint(sub_bp)
     app.register_blueprint(cat_bp)
+    app.register_blueprint(analytics_bp)
+    app.register_blueprint(budget_bp)
 
     with app.app_context():
         db.create_all()
@@ -36,4 +40,9 @@ def create_app():
     def internal_error(error):
         return make_response(jsonify({'error': 'Internal Server Error', 'message': str(error)}), 500)
 
+    @app.errorhandler(409)
+    def conflict(error):
+        message = error.description if error.description else "Duplicate Subscription Entry"
+        return make_response(jsonify({'error': 'Duplicate Entry', 'message': message}), 409)
     return app
+
