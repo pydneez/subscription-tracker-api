@@ -1,22 +1,18 @@
 from flask import Blueprint, request, jsonify, abort
 from app import db
-from app.models import Subscription, Category, FrequencyType, StatusType
+from app.models import Subscription, Category, FrequencyType, StatusType, Budget
 from sqlalchemy import func
+from datetime import date, datetime
 
-# Define Blueprint
 bp = Blueprint('subscriptions', __name__, url_prefix='/subscriptions')
 
-# --- Helper Function ---
+# --- Helper ---
 def get_or_create_category(category_name):
-    # 1. Try to find the category
     category = Category.query.filter(func.lower(Category.name) == category_name.lower()).first()
-    
-    # 2. If it doesn't exist, create it!
     if not category:
         category = Category(name=category_name.capitalize())
         db.session.add(category)
         db.session.commit() 
-        
     return category
 
 # --- Routes ---
@@ -44,76 +40,64 @@ def get_subscriptions():
 
     subs = query.all()
     if not subs:
-        return
+             return jsonify({
+                'message': f'No subscriptions found in category: {category_name}', 
+                'subscriptions': []
+            }), 404
 
     # return result
     return jsonify([sub.to_json() for sub in subs]), 200
-
-# GET ONE
 @bp.route('/<int:id>', methods=['GET'])
 def get_subscription(id):
-
     sub = db.session.get(Subscription, id)
-    if not sub:
-        abort(404, description=f"Subscription with ID {id} not found")
+    if not sub: abort(404, description=f"Subscription {id} not found")
     return jsonify(sub.to_json()), 200
 
-# CREATE
 @bp.route('', methods=['POST'])
 def create_subscription():
     try:
         data = request.get_json()
-        
+
         # 1. Validate required fields
-        required = ['name', 'price', 'frequency', 'category']
+        required = {'name', 'price', 'frequency', 'category'} 
         if not data or not all(k in data for k in required):
-            abort(400, description=f'Missing required fields. Needs: {required}')
-        
-        # 2. Validate Price
+            abort(400, description=f"Missing required fields: {', '.join(required - data.keys())}")
+
+        # Check Duplicates
+        if Subscription.query.filter(func.lower(Subscription.name) == data['name'].lower()).first():
+            abort(409, description=f"Subscription '{data['name']}' already exists.")
+
+        # Data Conversion
         try:
             price = float(data['price'])
             if price < 0: raise ValueError
-        except ValueError:
-            abort(400, description='Price must be a positive number')
-
-        # 3. Validate Frequency Enum
-        try:
             freq_enum = FrequencyType(data['frequency'])
         except ValueError:
-            allowed = [e.value for e in FrequencyType]
-            abort(400, description=f'Invalid frequency. Allowed: {allowed}')
+            abort(400, description="Invalid price or frequency")
 
-        # 4. Status (Optional)
         status_enum = StatusType.ACTIVE
-        # if 'status' in data:
-        #     try:
-        #         status_enum = StatusType(data['status'])
-        #     except ValueError:
-        #         allowed = [e.value for e in StatusType]
-        #         abort(400, description=f'Invalid status. Allowed: {allowed}')
+        if 'status' in data:
+            try: status_enum = StatusType(data['status'])
+            except ValueError: abort(400, description="Invalid status")
 
-        # 5. Handle Category
+        start_date = date.today()
+        if 'start_date' in data:
+            try: start_date = datetime.strptime(data['start_date'], '%Y-%m-%d').date()
+            except ValueError: abort(400, description="Invalid date format YYYY-MM-DD")
+
+        # Create
         cat_obj = get_or_create_category(data['category'])
-
         new_sub = Subscription(
-            name=data['name'],
-            price=price,
-            frequency=freq_enum,
-            category_id=cat_obj.id,
-            status=status_enum
+            name=data['name'], price=price, frequency=freq_enum,
+            category_id=cat_obj.id, status=status_enum, start_date=start_date
         )
         db.session.add(new_sub)
         db.session.commit()
         
-        return jsonify({
-            'message': 'Created', 
-            'subscription': new_sub.to_json(),
-            'note': f"Category '{cat_obj.name}' was linked successfully."
-        }), 201
+        return jsonify({'message': 'Created', 'subscription': new_sub.to_json()}), 201
         
     except Exception as e:
-        # Check if it's an abort exception (HTTPException), otherwise 500
-        if hasattr(e, 'code'): raise e 
+        if hasattr(e, 'code'): raise e
         abort(500, description=str(e))
 
 # UPDATE
@@ -165,13 +149,10 @@ def delete_subscription(id):
     if not sub:
         abort(404, description=f"Cannot delete: Subscription {id} does not exist")
     
-    # 1. Save the data in memory BEFORE deleting
     deleted_data = sub.to_json()
-    # 2. Delete from DB
     db.session.delete(sub)
     db.session.commit()
 
-    # 3. Return the saved data
     return jsonify({
         'message': 'Deleted successfully', 
         'subscription': deleted_data
