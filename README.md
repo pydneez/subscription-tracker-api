@@ -5,10 +5,10 @@ A RESTful API built with **Python** and **Flask** to help users track recurring 
 ## 🚀 Features
 
 * **CRUD Operations:** Create, Read, Update, and Delete subscriptions.
-* **Smart Categorization:** Automatically creates new categories if they don't exist when adding a subscription.
-* **Filtering:** Filter subscriptions by category (e.g., `GET /subscriptions?category=Gaming`).
+* **Advanced Filtering:** Filter subscriptions by category and status (e.g., `GET /subscriptions?category=Gaming&status=active`).
+* **Financial Analytics:** Real-time dashboard calculating monthly spend, yearly projections, and top spending categories.
+* **Budget Tracking:** Set a monthly limit and get health alerts (e.g., "Over Budget", "Warning").
 * **Data Validation:** Enforces strict Enum types for Frequencies and Statuses to ensure data integrity.
-* **Modular Design:** Code is split into Blueprints (`routes/`, `models.py`) for scalability.
 
 ---
 
@@ -19,7 +19,6 @@ A RESTful API built with **Python** and **Flask** to help users track recurring 
 │
 ├── run.py                 # Entry Point (Run this to start server)
 ├── seed.py                # Database Seeder (Run this to reset data)
-├── test_app.py            # Unit Test Suite
 ├── config.py              # Configuration settings
 ├── requirements.txt       # Dependencies
 ├── .gitignore             # Git ignore rules
@@ -32,11 +31,11 @@ A RESTful API built with **Python** and **Flask** to help users track recurring 
     ├── models.py          # Database Models & Enums
     └── routes/            # API Route Blueprints
         ├── __init__.py
-        ├── category_routes.py
-        └── subscription_routes.py
-
+        ├── analytics.py   # Financial Dashboard Logic
+        ├── budgets.py     # Budget Management Logic
+        ├── category.py    # Category CRUD
+        └── subscription.py # Subscription CRUD
 ```
-
 ---
 
 ## ⚡ Getting Started
@@ -46,8 +45,8 @@ Follow these steps to set up the project locally.
 ### 1. Clone the Repository
 
 ```bash
-git clone <your-repo-link-here>
-cd subscription-tracker
+git clone https://github.com/pydneez/subscription-tracker-api
+cd subscription-tracker-api
 
 ```
 
@@ -91,7 +90,6 @@ python run.py
 
 ```
 
-*> The API will start at https://www.google.com/search?q=http://127.0.0.1:5000*
 
 ---
 
@@ -102,7 +100,7 @@ python run.py
 | Method | Endpoint | Description |
 | --- | --- | --- |
 | **GET** | `/subscriptions` | Retrieve all subscriptions. |
-| **GET** | `/subscriptions?category=Name` | **Filter:** Retrieve subscriptions by category (e.g., `?category=Gaming`). Case-insensitive. |
+| **GET** | `/subscriptions?category=Name` | Filter subscriptions by category and/or status (e.g., `?category=Gamin&status=active`). |
 | **GET** | `/subscriptions/<id>` | Retrieve a single subscription by ID. |
 | **POST** | `/subscriptions` | Create a new subscription. |
 | **PUT** | `/subscriptions/<id>` | Update an existing subscription. |
@@ -116,7 +114,8 @@ python run.py
   "price": 15.99,
   "frequency": "Monthly",
   "category": "Entertainment",
-  "status": "Active"
+  "status": "Active",
+  "start_date": "2023-01-15"
 }
 
 ```
@@ -138,5 +137,33 @@ python run.py
 | **GET** | `/categories` | List all available categories. |
 | **POST** | `/categories` | Manually create a new category. |
 
+
 ---
 
+### 3. Summarize prices (Per month)
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| **GET** | `/analytics` | List total prices that are Active. |
+
+
+---
+
+### 4. Limit Budget
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| **GET** | `/budget` | Show current budget. |
+| **GET** | `/budget/status` | Show the status. |
+| **PUT** | `/budget` | Limit the budget. |
+
+**📝 PUT Request Example (Set Limit):**
+
+```json
+{
+  "limit": 150
+}
+
+
+```
+---
