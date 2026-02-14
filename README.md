@@ -130,6 +130,8 @@ python run.py
 
 ```
 
+---
+
 ### 2. Categories
 
 | Method | Endpoint | Description |
