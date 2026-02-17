@@ -17,7 +17,7 @@ def create_category():
     
     # Check if unique
     if Category.query.filter_by(name=data['name']).first():
-         abort(400, description=f"Category '{data['name']}' already exists")
+         abort(409, description=f"Category '{data['name']}' already exists")
 
     new_cat = Category(name=data['name'])
     db.session.add(new_cat)
